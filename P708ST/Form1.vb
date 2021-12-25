@@ -1,4 +1,5 @@
 ﻿Imports System.IO
+Imports System.Numerics
 Imports System.Text.RegularExpressions
 
 Public Class Form1
@@ -7,6 +8,16 @@ Public Class Form1
     ''' <para>If multiple windows show, this indicate the index of note shown</para>
     ''' </summary>
     Public WindowIndex As Integer = 0
+
+    Public GlobalBitmap As Bitmap = Nothing
+    Public GlobalCanvas As Graphics = Nothing
+
+    Private TopBarDragFlag As Boolean = False
+    Private TopBarDragLocation As Point
+
+    Private MarkerDragFlag As Boolean = False
+    'Private MarkerDragLocation As Point
+    Private MarkerPen As New SolidBrush(Color.FromArgb(151, 15, 15, 15))
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.Visible = False
@@ -32,19 +43,24 @@ Public Class Form1
         Me.TB1.Size = New Size(style.WindowSize.Width - 4, style.WindowSize.Height - style.TopBarHeight - 4)
         Me.TB1.Location = New Point(2, 2 + style.TopBarHeight)
 
-        Dim bitmap As New Bitmap(style.WindowSize.Width, style.WindowSize.Height)
-        Dim g As Graphics = Graphics.FromImage(bitmap)
+        Dim g As Graphics = GlobalCanvas
+        If GlobalCanvas Is Nothing Then
+            GlobalBitmap = New Bitmap(style.WindowSize.Width, style.WindowSize.Height)
+            g = Graphics.FromImage(GlobalBitmap)
+            GlobalCanvas = g
+        End If
+
         With g
             .Clear(style.BackGroundColor)
-            .FillRectangle(New SolidBrush(style.BackGroundDarkColor), New RectangleF(0, 0, style.WindowSize.Width, style.TopBarHeight))
+            .FillRectangle(New SolidBrush(style.TopBarColor), New RectangleF(0, 0, style.WindowSize.Width, style.TopBarHeight))
         End With
 
         'load text
         DrawNote(NotesBuffer(WindowIndex), g)
 
-        g.Dispose()
-        If P.Image IsNot Nothing Then P.Image.Dispose()
-        Me.P.Image = bitmap
+        'g.Dispose()
+        'If P.Image IsNot Nothing Then P.Image.Dispose()
+        Me.P.Image = GlobalBitmap
 
     End Sub
 
@@ -56,6 +72,18 @@ Public Class Form1
     Public Sub DrawNote(note As String, g As Graphics)
 
         Dim tmpFont As New Font("Microsoft YaHei", 16)
+        Dim tmpFont2 As New Font("Arial Black", 12)
+
+        'draw topbar
+        Dim brushTopBar As New SolidBrush(Color.FromArgb(255, 175, 170, 100))
+        Dim penTopBar As New Pen(brushTopBar.Color)
+        With g
+            .DrawString("Miz NOTE", tmpFont2, brushTopBar, New PointF(6, 6))
+            .FillEllipse(brushTopBar, New RectangleF(Me.Width - 24, 12, 12, 12))
+        End With
+        brushTopBar.Dispose()
+        penTopBar.Dispose()
+
         'parse note
         Dim lines As String() = Regex.Split(note, vbCrLf)
         If lines.Count > 0 Then
@@ -76,33 +104,59 @@ Public Class Form1
 
                     For Each seg As String In argList
                         If seg = "c_red" Then
-                            lineBrush = Brushes.Red
+                            lineBrush = New SolidBrush(Color.Red)
                         ElseIf seg = "c_blue" Then
-                            lineBrush = Brushes.Blue
+                            lineBrush = New SolidBrush(Color.Blue)
                         ElseIf seg = "c_green" Then
-                            lineBrush = Brushes.Green
+                            lineBrush = New SolidBrush(Color.Green)
                         Else
-                            lineBrush = Brushes.Black
+                            lineBrush = New SolidBrush(Color.FromArgb(255, 37, 37, 37))
                         End If
 
                     Next
 
                 Else
-                    lineBrush = Brushes.Black
+                    lineBrush = New SolidBrush(Color.FromArgb(255, 37, 37, 37))
                     lineContent = line
                 End If
 
                 With g
-                    .DrawString(lineContent, tmpFont, lineBrush, New PointF(3, 3 + 22 * i))
+                    .DrawString(lineContent, tmpFont, lineBrush, New PointF(3, 3 + AppliedSetting.TopBarHeight + 24 * i))
                 End With
+                lineBrush.Dispose()
             Next
         End If
 
-        'draw
-
-
         tmpFont.Dispose()
+        tmpFont2.Dispose()
 
+    End Sub
+
+    Public Sub DrawMarker(newLocation As Point, Optional penWidth As Single = 5.5)
+        'Dim p1 As New Vector2(MarkerDragLocation.X, MarkerDragLocation.Y)
+        'Dim p2 As New Vector2(newLocation.X, newLocation.Y)
+        'Dim penDir As Vector2 = p2 - p1
+        'penDir = Vector2.Normalize(penDir)
+        'Dim penNormal As New Vector2(penDir.Y * -1, penDir.X)
+        'Dim pts As New List(Of Vector2)
+        'With pts
+        '    .Add(p1 + penNormal * penWidth)
+        '    .Add(p2 + penNormal * penWidth)
+        '    .Add(p2 - penNormal * penWidth)
+        '    .Add(p1 - penNormal * penWidth)
+        'End With
+        'Dim pts_sys As New List(Of PointF)
+        'For Each vec As Vector2 In pts
+        '    Dim p As New PointF(vec.X, vec.Y)
+        '    pts_sys.Add(p)
+        'Next
+
+        With GlobalCanvas
+            '.DrawLine(MarkerPen, MarkerDragLocation, newLocation)
+            .FillEllipse(MarkerPen, New RectangleF(newLocation.X - penWidth, newLocation.Y - penWidth, penWidth * 2, penWidth * 2))
+            '.FillPolygon(MarkerPen, pts_sys.ToArray)
+        End With
+        P.Image = GlobalBitmap
     End Sub
 
     Private Sub P_MouseClick(sender As Object, e As MouseEventArgs) Handles P.MouseClick
@@ -113,6 +167,10 @@ Public Class Form1
                 PullTextBox()
             End If
             TB1.Visible = Not TB1.Visible
+        ElseIf e.Button = MouseButtons.Left Then
+            If e.X > Me.Width - 36 AndAlso e.Y < AppliedSetting.TopBarHeight Then
+                Me.Close()
+            End If
         End If
     End Sub
 
@@ -120,16 +178,15 @@ Public Class Form1
         NotesBuffer(WindowIndex) = TB1.Text
         SaveAllNotes()
 
-        Dim bitmap As New Bitmap(AppliedSetting.WindowSize.Width, AppliedSetting.WindowSize.Height)
-        Dim g As Graphics = Graphics.FromImage(bitmap)
+        Dim g As Graphics = GlobalCanvas
         With g
             .Clear(AppliedSetting.BackGroundColor)
-            .FillRectangle(New SolidBrush(AppliedSetting.BackGroundDarkColor), New RectangleF(0, 0, AppliedSetting.WindowSize.Width, AppliedSetting.TopBarHeight))
+            .FillRectangle(New SolidBrush(AppliedSetting.TopBarColor), New RectangleF(0, 0, AppliedSetting.WindowSize.Width, AppliedSetting.TopBarHeight))
         End With
         DrawNote(NotesBuffer(WindowIndex), g)
-        g.Dispose()
-        If P.Image IsNot Nothing Then P.Image.Dispose()
-        Me.P.Image = bitmap
+        'g.Dispose()
+        'If P.Image IsNot Nothing Then P.Image.Dispose()
+        Me.P.Image = GlobalBitmap
 
     End Sub
 
@@ -142,5 +199,31 @@ Public Class Form1
             ApplyTextBox()
             TB1.Visible = False
         End If
+    End Sub
+
+    Private Sub P_MouseDown(sender As Object, e As MouseEventArgs) Handles P.MouseDown
+        If e.Button = MouseButtons.Left Then
+            If e.Y < AppliedSetting.TopBarHeight Then
+                TopBarDragLocation = e.Location
+                TopBarDragFlag = True
+            Else
+                'MarkerDragLocation = e.Location
+                MarkerDragFlag = True
+            End If
+        End If
+    End Sub
+
+    Private Sub P_MouseMove(sender As Object, e As MouseEventArgs) Handles P.MouseMove
+        If TopBarDragFlag Then
+            Me.Location += e.Location - TopBarDragLocation
+        ElseIf MarkerDragFlag Then
+            DrawMarker(e.Location, 1.5)
+            'MarkerDragLocation = e.Location
+        End If
+    End Sub
+
+    Private Sub P_MouseUp(sender As Object, e As MouseEventArgs) Handles P.MouseUp
+        TopBarDragFlag = False
+        MarkerDragFlag = False
     End Sub
 End Class

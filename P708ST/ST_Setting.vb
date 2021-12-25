@@ -28,9 +28,22 @@ Public Class ST_Setting
     ''' </summary>
     Public BackGroundColor As Color
 
+    Public TopBarColor As Color
+
     Public ReadOnly Property BackGroundDarkColor As Color
         Get
             Return Color.FromArgb(255, BackGroundColor.R * 0.9, BackGroundColor.G * 0.9, BackGroundColor.B * 0.9)
+        End Get
+    End Property
+    Public ReadOnly Property BackGroundLightColor As Color
+        Get
+            Dim r As Integer = BackGroundColor.R * 1.1
+            If R > 255 Then R = 255
+            Dim g As Integer = BackGroundColor.G * 1.1
+            If g > 255 Then g = 255
+            Dim b As Integer = BackGroundColor.B * 1.1
+            If b > 255 Then b = 255
+            Return Color.FromArgb(255, r, g, b)
         End Get
     End Property
 
@@ -44,6 +57,7 @@ Public Class ST_Setting
             Me.WindowSize = New Size(300, 336)
             Me.TopBarHeight = 36
             Me.BackGroundColor = Color.WhiteSmoke
+            Me.TopBarColor = Color.LightGray
         End If
     End Sub
 
@@ -65,6 +79,9 @@ Public Class ST_Setting
                     Me.BackGroundColor = Color.FromArgb(255, CInt(rgb(0)), CInt(rgb(1)), CInt(rgb(2)))
                 Case "tbh"
                     Me.TopBarHeight = CInt(args(1))
+                Case "tbc"
+                    Dim rgb() As String = Regex.Split(args(1), ",")
+                    Me.TopBarColor = Color.FromArgb(255, CInt(rgb(0)), CInt(rgb(1)), CInt(rgb(2)))
 
             End Select
         Next
@@ -80,12 +97,15 @@ Public Class ST_Setting
 		line_bgc = line_bgc & me.BackGroundColor.R & "," & me.BackGroundColor.G & "," & me.BackGroundColor.B
 		dim line_tbh as String = "tbh:"
         line_tbh = line_tbh & Me.TopBarHeight
+        Dim line_tbc As String = "tbc:"
+        line_tbh = line_tbh & Me.TopBarColor.R & "," & Me.TopBarColor.G & "," & Me.TopBarColor.B
 
         Using sw As StreamWriter = New StreamWriter(fileStream)
             sw.WriteLine(line_sx)
             sw.WriteLine(line_sy)
 			sw.WriteLine(line_bgc)
-			sw.WriteLine(line_tbh)
+            sw.WriteLine(line_tbh)
+            sw.WriteLine(line_tbc)
 
         End Using
 		return 1
