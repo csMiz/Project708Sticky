@@ -55,7 +55,9 @@ Partial Class Form1
         Me.Controls.Add(Me.P)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None
         Me.Name = "Form1"
-        Me.Text = "Form1"
+        Me.ShowIcon = False
+        Me.ShowInTaskbar = False
+        Me.Text = "Miz NOTE"
         Me.TopMost = True
         CType(Me.P, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)

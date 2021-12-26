@@ -16,7 +16,7 @@ Public Class Form1
     Private TopBarDragLocation As Point
 
     Private MarkerDragFlag As Boolean = False
-    'Private MarkerDragLocation As Point
+    Private MarkerDragLocation As Point
     Private MarkerPen As New SolidBrush(Color.FromArgb(151, 15, 15, 15))
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -38,6 +38,8 @@ Public Class Form1
     Public Sub ApplyUISetting(style As ST_Setting)
 
         Me.ClientSize = style.WindowSize
+        Dim screenRect As Rectangle = System.Windows.Forms.Screen.GetWorkingArea(Me)
+        Me.Location = New Point(screenRect.Width - style.WindowSize.Width, screenRect.Height - style.WindowSize.Height)
         Me.P.Size = style.WindowSize
         Me.P.Location = New Point(0, 0)
         Me.TB1.Size = New Size(style.WindowSize.Width - 4, style.WindowSize.Height - style.TopBarHeight - 4)
@@ -78,7 +80,7 @@ Public Class Form1
         Dim brushTopBar As New SolidBrush(Color.FromArgb(255, 175, 170, 100))
         Dim penTopBar As New Pen(brushTopBar.Color)
         With g
-            .DrawString("Miz NOTE", tmpFont2, brushTopBar, New PointF(6, 6))
+            .DrawString("NOTE", tmpFont2, brushTopBar, New PointF(6, 6))
             .FillEllipse(brushTopBar, New RectangleF(Me.Width - 24, 12, 12, 12))
         End With
         brushTopBar.Dispose()
@@ -133,28 +135,11 @@ Public Class Form1
     End Sub
 
     Public Sub DrawMarker(newLocation As Point, Optional penWidth As Single = 5.5)
-        'Dim p1 As New Vector2(MarkerDragLocation.X, MarkerDragLocation.Y)
-        'Dim p2 As New Vector2(newLocation.X, newLocation.Y)
-        'Dim penDir As Vector2 = p2 - p1
-        'penDir = Vector2.Normalize(penDir)
-        'Dim penNormal As New Vector2(penDir.Y * -1, penDir.X)
-        'Dim pts As New List(Of Vector2)
-        'With pts
-        '    .Add(p1 + penNormal * penWidth)
-        '    .Add(p2 + penNormal * penWidth)
-        '    .Add(p2 - penNormal * penWidth)
-        '    .Add(p1 - penNormal * penWidth)
-        'End With
-        'Dim pts_sys As New List(Of PointF)
-        'For Each vec As Vector2 In pts
-        '    Dim p As New PointF(vec.X, vec.Y)
-        '    pts_sys.Add(p)
-        'Next
+        'Dim dist As Point = newLocation - MarkerDragLocation
+        'Dim len As Single = Math.Sqrt(dist.X * dist.X + dist.Y * dist.Y)
 
         With GlobalCanvas
-            '.DrawLine(MarkerPen, MarkerDragLocation, newLocation)
             .FillEllipse(MarkerPen, New RectangleF(newLocation.X - penWidth, newLocation.Y - penWidth, penWidth * 2, penWidth * 2))
-            '.FillPolygon(MarkerPen, pts_sys.ToArray)
         End With
         P.Image = GlobalBitmap
     End Sub
@@ -207,7 +192,7 @@ Public Class Form1
                 TopBarDragLocation = e.Location
                 TopBarDragFlag = True
             Else
-                'MarkerDragLocation = e.Location
+                MarkerDragLocation = e.Location
                 MarkerDragFlag = True
             End If
         End If
@@ -218,7 +203,7 @@ Public Class Form1
             Me.Location += e.Location - TopBarDragLocation
         ElseIf MarkerDragFlag Then
             DrawMarker(e.Location, 1.5)
-            'MarkerDragLocation = e.Location
+            MarkerDragLocation = e.Location
         End If
     End Sub
 
