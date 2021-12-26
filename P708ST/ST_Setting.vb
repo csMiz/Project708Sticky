@@ -54,10 +54,10 @@ Public Class ST_Setting
     ''' </summary>
     Public Sub New(Optional defaultSettings = True)
         If defaultSettings Then
-            Me.WindowSize = New Size(300, 336)
+            Me.WindowSize = New Size(300, 300)
             Me.TopBarHeight = 36
-            Me.BackGroundColor = Color.WhiteSmoke
-            Me.TopBarColor = Color.LightGray
+            Me.BackGroundColor = Color.FromArgb(255, 255, 247, 209)
+            Me.TopBarColor = Color.FromArgb(255, 255, 242, 171)
         End If
     End Sub
 
