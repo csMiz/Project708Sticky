@@ -39,7 +39,10 @@ Public Class Form1
 
         Me.ClientSize = style.WindowSize
         Dim screenRect As Rectangle = System.Windows.Forms.Screen.GetWorkingArea(Me)
-        Me.Location = New Point(screenRect.Width - style.WindowSize.Width, screenRect.Height - style.WindowSize.Height)
+        Dim tmpLoc As New Point(screenRect.Width - style.WindowSize.Width, screenRect.Height - style.WindowSize.Height - (style.WindowSize.Height + 4) * (NotesBuffer.Count - 1 - WindowIndex))
+        If tmpLoc.X < 0 Then tmpLoc.X = 0
+        If tmpLoc.Y < 0 Then tmpLoc.Y = 0
+        Me.Location = tmpLoc
         Me.P.Size = style.WindowSize
         Me.P.Location = New Point(0, 0)
         Me.TB1.Size = New Size(style.WindowSize.Width - 4, style.WindowSize.Height - style.TopBarHeight - 4)
@@ -80,7 +83,8 @@ Public Class Form1
         Dim brushTopBar As New SolidBrush(Color.FromArgb(255, 175, 170, 100))
         Dim penTopBar As New Pen(brushTopBar.Color)
         With g
-            .DrawString("NOTE", tmpFont2, brushTopBar, New PointF(6, 6))
+            Dim titleString As String = "NOTE"
+            .DrawString(titleString, tmpFont2, brushTopBar, New PointF(6, 6))
             .FillEllipse(brushTopBar, New RectangleF(Me.Width - 24, 12, 12, 12))
         End With
         brushTopBar.Dispose()
@@ -151,7 +155,9 @@ Public Class Form1
             Else
                 PullTextBox()
             End If
+            TB1.Enabled = Not TB1.Enabled
             TB1.Visible = Not TB1.Visible
+
         ElseIf e.Button = MouseButtons.Left Then
             If e.X > Me.Width - 36 AndAlso e.Y < AppliedSetting.TopBarHeight Then
                 Me.Close()
@@ -182,6 +188,7 @@ Public Class Form1
     Private Sub TB1_KeyDown(sender As Object, e As KeyEventArgs) Handles TB1.KeyDown
         If e.KeyCode = Keys.Escape Then
             ApplyTextBox()
+            TB1.Enabled = False
             TB1.Visible = False
         End If
     End Sub
@@ -211,4 +218,17 @@ Public Class Form1
         TopBarDragFlag = False
         MarkerDragFlag = False
     End Sub
+
+    Private Sub Form1_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown, P.KeyDown, TB1.KeyDown
+        If TB1.Enabled Then Return
+        If e.Control AndAlso e.KeyCode = Keys.N Then
+            ' new window
+            NotesBuffer.Add("")
+            IndexGeneratorFlag += 1
+            Dim subForm As New Form1() With {.WindowIndex = IndexGeneratorFlag - 1}
+            subForm.Show()
+            subForm.Location = New Point(0, 0)
+        End If
+    End Sub
+
 End Class

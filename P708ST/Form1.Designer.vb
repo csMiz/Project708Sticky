@@ -40,6 +40,7 @@ Partial Class Form1
         '
         Me.TB1.AcceptsReturn = True
         Me.TB1.AcceptsTab = True
+        Me.TB1.Enabled = False
         Me.TB1.Location = New System.Drawing.Point(230, 168)
         Me.TB1.Multiline = True
         Me.TB1.Name = "TB1"

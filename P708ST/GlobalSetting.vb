@@ -6,6 +6,7 @@ Module GlobalSetting
     Public AppliedSetting As ST_Setting = Nothing
 
     Public NotesBuffer As List(Of String) = Nothing
+    Public IndexGeneratorFlag As Integer = 0
 
 
     ''' <summary>
@@ -37,6 +38,14 @@ Module GlobalSetting
 
         'read notes from local files
         NotesBuffer = GetAllSavedNotes()
+        IndexGeneratorFlag = NotesBuffer.Count
+        If NotesBuffer.Count > 1 Then
+            For i = 1 To NotesBuffer.Count - 1
+                Dim subForm As New Form1 With {.WindowIndex = i}
+                subForm.Show()
+            Next
+        End If
+
 
     End Sub
 
@@ -86,6 +95,12 @@ Module GlobalSetting
             End
         End If
 
+        For i = result.Count - 1 To 0 Step -1
+            If result(i).Length = 0 Then
+                result.RemoveAt(i)
+            End If
+        Next
+
         Return result
     End Function
 
@@ -97,10 +112,11 @@ Module GlobalSetting
         Dim saveText As String = ""
         If NotesBuffer.Count Then
             If NotesBuffer.Count > 1 Then
-                For i = 0 To NotesBuffer.Count - 2
-                    saveText = saveText & NotesBuffer(i) & "<note_sep>"
+                For i = 0 To NotesBuffer.Count - 1
+                    If NotesBuffer(i).Length > 0 Then
+                        saveText = saveText & NotesBuffer(i) & "<note_sep>"
+                    End If
                 Next
-                saveText = saveText & NotesBuffer.Last
             Else
                 saveText = NotesBuffer.First
             End If
