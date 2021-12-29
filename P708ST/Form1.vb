@@ -95,7 +95,7 @@ Public Class Form1
         If lines.Count > 0 Then
             For i = 0 To lines.Count - 1
                 Dim line As String = lines(i)
-                Dim lineBrush As SolidBrush = Nothing
+                Dim lineBrush As SolidBrush = New SolidBrush(Color.FromArgb(255, 37, 37, 37))
                 Dim lineContent As String = vbNullString
                 If line.Contains("::") Then
                     Dim args As String() = Regex.Split(line, "::")
@@ -110,13 +110,28 @@ Public Class Form1
 
                     For Each seg As String In argList
                         If seg = "c_red" Then
+                            lineBrush.Dispose()
                             lineBrush = New SolidBrush(Color.Red)
                         ElseIf seg = "c_blue" Then
+                            lineBrush.Dispose()
                             lineBrush = New SolidBrush(Color.Blue)
                         ElseIf seg = "c_green" Then
+                            lineBrush.Dispose()
                             lineBrush = New SolidBrush(Color.Green)
+                        ElseIf seg = "fs_xs" Then
+                            tmpFont.Dispose()
+                            tmpFont = New Font("Microsoft YaHei", 8)
+                        ElseIf seg = "fs_s" Then
+                            tmpFont.Dispose()
+                            tmpFont = New Font("Microsoft YaHei", 12)
+                        ElseIf seg = "fs_m" Then
+                            tmpFont.Dispose()
+                            tmpFont = New Font("Microsoft YaHei", 16)
+                        ElseIf seg = "fs_l" Then
+                            tmpFont.Dispose()
+                            tmpFont = New Font("Microsoft YaHei", 20)
                         Else
-                            lineBrush = New SolidBrush(Color.FromArgb(255, 37, 37, 37))
+
                         End If
 
                     Next
@@ -139,10 +154,19 @@ Public Class Form1
     End Sub
 
     Public Sub DrawMarker(newLocation As Point, Optional penWidth As Single = 5.5)
-        'Dim dist As Point = newLocation - MarkerDragLocation
-        'Dim len As Single = Math.Sqrt(dist.X * dist.X + dist.Y * dist.Y)
+        Dim dist As Point = newLocation - MarkerDragLocation
+        Dim len As Single = Math.Sqrt(dist.X * dist.X + dist.Y * dist.Y)
+        Dim moreDotCount As Integer = CInt(Math.Floor(len)) - 1
+        Dim interval As New PointF(dist.X / (moreDotCount + 1), dist.Y / (moreDotCount + 1))
 
         With GlobalCanvas
+            If moreDotCount > 0 Then
+                For i = 1 To moreDotCount
+                    Dim tmpCenter As New PointF(MarkerDragLocation.X + interval.X * i, MarkerDragLocation.Y + interval.Y * i)
+                    .FillEllipse(MarkerPen, New RectangleF(tmpCenter.X - penWidth, tmpCenter.Y - penWidth, penWidth * 2, penWidth * 2))
+                Next
+            End If
+
             .FillEllipse(MarkerPen, New RectangleF(newLocation.X - penWidth, newLocation.Y - penWidth, penWidth * 2, penWidth * 2))
         End With
         P.Image = GlobalBitmap
