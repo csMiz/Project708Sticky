@@ -18,6 +18,7 @@ Public Class Form1
     Private MarkerDragFlag As Boolean = False
     Private MarkerDragLocation As Point
     Private MarkerPen As New SolidBrush(Color.FromArgb(151, 15, 15, 15))
+    Private MarkerVelocity As Single = 0.0F
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.Visible = False
@@ -52,6 +53,7 @@ Public Class Form1
         If GlobalCanvas Is Nothing Then
             GlobalBitmap = New Bitmap(style.WindowSize.Width, style.WindowSize.Height)
             g = Graphics.FromImage(GlobalBitmap)
+            g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
             GlobalCanvas = g
         End If
 
@@ -156,20 +158,27 @@ Public Class Form1
     Public Sub DrawMarker(newLocation As Point, Optional penWidth As Single = 5.5)
         Dim dist As Point = newLocation - MarkerDragLocation
         Dim len As Single = Math.Sqrt(dist.X * dist.X + dist.Y * dist.Y)
-        Dim moreDotCount As Integer = CInt(Math.Floor(len)) - 1
-        Dim interval As New PointF(dist.X / (moreDotCount + 1), dist.Y / (moreDotCount + 1))
+        Dim moreDotCount As Integer = CInt(Math.Floor(len * 1.0F)) + 1
+        If moreDotCount > 0 Then
+            Dim interval As New PointF(dist.X / (moreDotCount), dist.Y / (moreDotCount))
+            Dim v_interval As Single = (len - MarkerVelocity) / moreDotCount
 
-        With GlobalCanvas
-            If moreDotCount > 0 Then
+            With GlobalCanvas
                 For i = 1 To moreDotCount
                     Dim tmpCenter As New PointF(MarkerDragLocation.X + interval.X * i, MarkerDragLocation.Y + interval.Y * i)
-                    .FillEllipse(MarkerPen, New RectangleF(tmpCenter.X - penWidth, tmpCenter.Y - penWidth, penWidth * 2, penWidth * 2))
+                    Dim tmpVelocity As Single = MarkerVelocity + i * v_interval
+                    Dim tmpWidth As Single = 1.0F - 0.1F * tmpVelocity
+                    If tmpWidth < 0.5F Then tmpWidth = 0.5F
+                    tmpWidth *= penWidth
+                    .FillEllipse(MarkerPen, New RectangleF(tmpCenter.X - tmpWidth, tmpCenter.Y - tmpWidth, tmpWidth * 2, tmpWidth * 2))
                 Next
-            End If
+            End With
+            P.Image = GlobalBitmap
+            MarkerVelocity = len
+        Else
+            MarkerVelocity = 0.0F
+        End If
 
-            .FillEllipse(MarkerPen, New RectangleF(newLocation.X - penWidth, newLocation.Y - penWidth, penWidth * 2, penWidth * 2))
-        End With
-        P.Image = GlobalBitmap
     End Sub
 
     Private Sub P_MouseClick(sender As Object, e As MouseEventArgs) Handles P.MouseClick
@@ -233,7 +242,7 @@ Public Class Form1
         If TopBarDragFlag Then
             Me.Location += e.Location - TopBarDragLocation
         ElseIf MarkerDragFlag Then
-            DrawMarker(e.Location, 1.5)
+            DrawMarker(e.Location, 1.5F)
             MarkerDragLocation = e.Location
         End If
     End Sub
@@ -241,6 +250,7 @@ Public Class Form1
     Private Sub P_MouseUp(sender As Object, e As MouseEventArgs) Handles P.MouseUp
         TopBarDragFlag = False
         MarkerDragFlag = False
+        MarkerVelocity = 0.0F
     End Sub
 
     Private Sub Form1_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown, P.KeyDown, TB1.KeyDown
