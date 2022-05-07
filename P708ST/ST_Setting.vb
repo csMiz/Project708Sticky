@@ -30,6 +30,7 @@ Public Class ST_Setting
 
     Public TopBarColor As Color
 
+
     Public ReadOnly Property BackGroundDarkColor As Color
         Get
             Return Color.FromArgb(255, BackGroundColor.R * 0.9, BackGroundColor.G * 0.9, BackGroundColor.B * 0.9)
@@ -98,7 +99,8 @@ Public Class ST_Setting
 		dim line_tbh as String = "tbh:"
         line_tbh = line_tbh & Me.TopBarHeight
         Dim line_tbc As String = "tbc:"
-        line_tbh = line_tbh & Me.TopBarColor.R & "," & Me.TopBarColor.G & "," & Me.TopBarColor.B
+        line_tbc = line_tbc & Me.TopBarColor.R & "," & Me.TopBarColor.G & "," & Me.TopBarColor.B
+
 
         Using sw As StreamWriter = New StreamWriter(fileStream)
             sw.WriteLine(line_sx)

@@ -1,8 +1,51 @@
 ﻿Imports System.IO
 Imports System.Numerics
+Imports System.Runtime.InteropServices
 Imports System.Text.RegularExpressions
 
 Public Class Form1
+
+    ' Add support for stylus pen, require Windows7+
+    <DllImport("user32")>
+    Private Shared Function GetPointerPenInfo(ByVal pointerId As Integer, ByRef penInfo As POINTER_PEN_INFO) As Boolean
+    End Function
+
+    Private Structure POINTER_PEN_INFO
+        Dim pointerInfo As POINTER_INFO
+        Dim penFlags As UInt32
+        Dim penMask As UInt32
+        Dim pressure As UInt32    ' 1024 pressure level supprted
+        Dim rotation As UInt32
+        Dim tiltX As Int32
+        Dim tiltY As Int32
+    End Structure
+
+    Private Structure POINTER_INFO
+        Dim pointerType As Int32    ' 3 - stylus pen
+        Dim pointerId As UInt32
+        Dim frameId As UInt32
+        Dim pointerFlags As UInt32
+        Dim sourceDevice As Long    ' Cautious: for x64 app, it is Int64, but for x86 app, it is Int32
+        Dim hwndTarget As Long    ' Cautious: for x64 app, it is Int64, but for x86 app, it is Int32
+        Dim ptPixelLocation As POINTAPI    ' screen coord
+        Dim ptHimetricLocation As POINTAPI
+        Dim ptPixelLocationRaw As POINTAPI
+        Dim ptHimetricLocationRaw As POINTAPI
+        Dim dwTime As UInt32
+        Dim historyCount As UInt32
+        Dim InputData As Int32
+        Dim dwKeyStates As UInt32
+        Dim PerformanceCount As UInt64
+        Dim ButtonChangeType As Int32
+    End Structure
+
+    Private Structure POINTAPI
+        Dim x As Integer
+        Dim y As Integer
+    End Structure
+
+    Private Const WM_POINTERUPDATE = &H245
+
     ''' <summary>
     ''' default window index
     ''' <para>If multiple windows show, this indicate the index of note shown</para>
@@ -15,10 +58,40 @@ Public Class Form1
     Private TopBarDragFlag As Boolean = False
     Private TopBarDragLocation As Point
 
+
+    Public MouseDrawingEnable As Integer = 0
+
     Private MarkerDragFlag As Boolean = False
     Private MarkerDragLocation As Point
     Private MarkerPen As New SolidBrush(Color.FromArgb(151, 15, 15, 15))
     Private MarkerVelocity As Single = 0.0F
+    Private MarkerLastPressure As Integer = 0
+
+    Protected Overrides Sub WndProc(ByRef m As Message)
+        MyBase.WndProc(m)
+
+        If Me.MouseDrawingEnable = 0 Then
+            If (m.Msg = WM_POINTERUPDATE) Then
+                Dim ptid As UInt32 = m.WParam.ToInt32 And &HFFFF
+                Dim info As POINTER_PEN_INFO
+                Dim info_status As Boolean
+                info_status = GetPointerPenInfo(ptid, info)
+                If info_status AndAlso info.pointerInfo.pointerType = 3 Then    ' is pen input
+                    Dim windowPos As Point = Me.Location
+                    Dim x As Integer = info.pointerInfo.ptPixelLocation.x - windowPos.X
+                    Dim y As Integer = info.pointerInfo.ptPixelLocation.y - windowPos.Y
+
+                    If MarkerDragLocation.X > 0 AndAlso MarkerDragLocation.Y > 0 Then
+                        DrawMarker_Pressure(x, y, info.pressure)
+                    End If
+                    MarkerDragLocation = New Point(x, y)
+                    MarkerLastPressure = info.pressure
+                End If
+
+            End If
+        End If
+
+    End Sub
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.Visible = False
@@ -30,6 +103,8 @@ Public Class Form1
 
         'load UI
         ApplyUISetting(AppliedSetting)
+
+        P.Visible = False
 
         Me.Visible = True
 
@@ -67,7 +142,8 @@ Public Class Form1
 
         'g.Dispose()
         'If P.Image IsNot Nothing Then P.Image.Dispose()
-        Me.P.Image = GlobalBitmap
+        'Me.P.Image = GlobalBitmap
+        Me.BackgroundImage = GlobalBitmap
 
     End Sub
 
@@ -173,7 +249,9 @@ Public Class Form1
                     .FillEllipse(MarkerPen, New RectangleF(tmpCenter.X - tmpWidth, tmpCenter.Y - tmpWidth, tmpWidth * 2, tmpWidth * 2))
                 Next
             End With
-            P.Image = GlobalBitmap
+            'P.Image = GlobalBitmap
+            Me.BackgroundImage = Nothing    ' HACK: 强制刷新，考虑双缓冲？
+            Me.BackgroundImage = GlobalBitmap
             MarkerVelocity = len
         Else
             MarkerVelocity = 0.0F
@@ -181,7 +259,35 @@ Public Class Form1
 
     End Sub
 
-    Private Sub P_MouseClick(sender As Object, e As MouseEventArgs) Handles P.MouseClick
+    Public Sub DrawMarker_Pressure(x As Integer, y As Integer, pressure As Integer)
+        If pressure = 0 Then Return
+
+        Dim newLocation As New Point(x, y)
+        Dim newWidth As Single = pressure * 5.5F / 1024.0F
+        Dim lastWidth As Single = MarkerLastPressure * 5.5F / 1024.0F
+
+        Dim dist As Point = newLocation - MarkerDragLocation
+        Dim len As Single = Math.Sqrt(dist.X * dist.X + dist.Y * dist.Y)
+        Dim moreDotCount As Integer = CInt(Math.Floor(len * 1.0F)) + 1
+        If moreDotCount > 0 Then
+            Dim interval As New PointF(dist.X / (moreDotCount), dist.Y / (moreDotCount))
+            Dim intervalWidth As Single = (newWidth - lastWidth) / moreDotCount
+
+            With GlobalCanvas
+                For i = 1 To moreDotCount
+                    Dim tmpCenter As New PointF(MarkerDragLocation.X + interval.X * i, MarkerDragLocation.Y + interval.Y * i)
+                    Dim tmpWidth As Single = lastWidth + intervalWidth * i
+                    .FillEllipse(MarkerPen, New RectangleF(tmpCenter.X - tmpWidth, tmpCenter.Y - tmpWidth, tmpWidth * 2, tmpWidth * 2))
+                Next
+            End With
+            'P.Image = GlobalBitmap
+            Me.BackgroundImage = Nothing    ' HACK: 强制刷新，考虑双缓冲？
+            Me.BackgroundImage = GlobalBitmap
+        End If
+
+    End Sub
+
+    Private Sub P_MouseClick(sender As Object, e As MouseEventArgs) Handles P.MouseClick, Me.MouseClick
         If e.Button = MouseButtons.Right Then
             If TB1.Visible Then
                 ApplyTextBox()
@@ -210,7 +316,8 @@ Public Class Form1
         DrawNote(NotesBuffer(WindowIndex), g)
         'g.Dispose()
         'If P.Image IsNot Nothing Then P.Image.Dispose()
-        Me.P.Image = GlobalBitmap
+        'Me.P.Image = GlobalBitmap
+        Me.BackgroundImage = GlobalBitmap
 
     End Sub
 
@@ -226,7 +333,7 @@ Public Class Form1
         End If
     End Sub
 
-    Private Sub P_MouseDown(sender As Object, e As MouseEventArgs) Handles P.MouseDown
+    Private Sub P_MouseDown(sender As Object, e As MouseEventArgs) Handles P.MouseDown, Me.MouseDown
         If e.Button = MouseButtons.Left Then
             If e.Y < AppliedSetting.TopBarHeight Then
                 TopBarDragLocation = e.Location
@@ -238,19 +345,25 @@ Public Class Form1
         End If
     End Sub
 
-    Private Sub P_MouseMove(sender As Object, e As MouseEventArgs) Handles P.MouseMove
+    Private Sub P_MouseMove(sender As Object, e As MouseEventArgs) Handles P.MouseMove, Me.MouseMove
         If TopBarDragFlag Then
             Me.Location += e.Location - TopBarDragLocation
         ElseIf MarkerDragFlag Then
-            DrawMarker(e.Location, 1.5F)
+            If Me.MouseDrawingEnable Then
+                DrawMarker(e.Location, 1.5F)
+            End If
             MarkerDragLocation = e.Location
-        End If
+            End If
     End Sub
 
-    Private Sub P_MouseUp(sender As Object, e As MouseEventArgs) Handles P.MouseUp
+    Private Sub P_MouseUp(sender As Object, e As MouseEventArgs) Handles P.MouseUp, Me.MouseUp
         TopBarDragFlag = False
         MarkerDragFlag = False
         MarkerVelocity = 0.0F
+    End Sub
+
+    Private Sub P_MouseDoubleClick(sender As Object, e As MouseEventArgs) Handles P.MouseDoubleClick, Me.MouseDoubleClick
+        Me.MouseDrawingEnable = 1 - Me.MouseDrawingEnable
     End Sub
 
     Private Sub Form1_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown, P.KeyDown, TB1.KeyDown
@@ -264,5 +377,6 @@ Public Class Form1
             subForm.Location = New Point(0, 0)
         End If
     End Sub
+
 
 End Class
